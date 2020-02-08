@@ -25,13 +25,13 @@ namespace sqlFormating
 
             var f = new Formatting(sqlText);
 
-            richTextBox2.Text = f.makeFormated();
+            richTextBox2.Text = f.MakeFormated();
         }
     }
 
     public class Formatting
     {
-        public string text { get; }
+        public string text { get; set; }
 
         public Formatting()
         {
@@ -43,10 +43,14 @@ namespace sqlFormating
             text = sqlText;
         }
 
-        public string makeFormated()
+        public string MakeFormated()
         {
             var tmpText = "";
             var newLine = "";
+            var offset = 0;
+
+            ToUpperRegister();
+
             using (StringReader reader = new StringReader(text))
             {
                 string line;
@@ -54,9 +58,10 @@ namespace sqlFormating
                 while ((line = reader.ReadLine()) != null)
                 {
                     newLine = line;
-                    var selectPos = line.IndexOf("select", StringComparison.CurrentCultureIgnoreCase);
-                    var fromPos = line.IndexOf("from", StringComparison.CurrentCultureIgnoreCase);
-                    var wherePos = line.IndexOf("where", StringComparison.CurrentCultureIgnoreCase);
+                    var selectPos = line.IndexOf("SELECT");
+                    var fromPos = line.IndexOf("FROM");
+                    var wherePos = line.IndexOf("WHERE");
+
 
                     // проверяем, что бы SELECT и FROM были в одной строке
                     if (selectPos != -1 && fromPos != -1)
@@ -72,12 +77,39 @@ namespace sqlFormating
                             
                         }
                     }
-
+                    
+                    // Каждый join то же перенесем на новую строку
+                    var joinNext = 0;
+                    foreach (var word in line.Split(' '))
+                    {
+                        if (word == "JOIN")
+                        {
+                            offset = newLine.IndexOf("JOIN", joinNext);
+                            newLine = newLine.Insert(offset, "\n");
+                            joinNext = newLine.IndexOf("JOIN", offset + 4);
+                        }
+                    }
                 }
             }
 
             return newLine.ToString();
+        }
 
+        // Переведем все служебные слова в верзний регистр
+        public void ToUpperRegister()
+        {
+            string[] serviceWords = {"SELECT", "FROM", "WHERE", "ORDER", "BY", "GROUP", "JOIN", "ON", "AND", "TOP", "ROW_COUNT", "COUNT", "SUM", "OVER", "PARTITION"};
+
+            foreach (var word in text.Split(' '))
+            {
+                if (serviceWords.Contains(word.ToUpper()))
+                {
+                    if (word != word.ToUpper())
+                    {
+                        text = text.Replace(word, word.ToUpper());
+                    }
+                }
+            }
         }
     }
 }
